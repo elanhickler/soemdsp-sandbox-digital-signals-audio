@@ -16862,6 +16862,7 @@ def require_readme_scheduler_contract() -> None:
         "Chua Attractor",
         "Logistic Map",
         "Chord Sequencer",
+        "LUT Cell",
         "Lossy by design",
         "2^53",
     ]:
