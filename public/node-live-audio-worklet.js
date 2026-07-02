@@ -167,6 +167,7 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
     this.turingMachineStates = new Map();
     this.pitchQuantizerStates = new Map();
     this.chordSequencerStates = new Map();
+    this.lutCellStates = new Map();
     this.noiseGeneratorStates = new Map();
     this.oscResetStates = new Map();
     this.graphLfoStates = new Map();
@@ -657,6 +658,23 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
         });
         return;
       }
+      if (name === "lut_cell" || targetType === "lutCell") {
+        for (const state of this.lutCellStates.values()) {
+          this.destroyLutCellNativeState(state);
+        }
+        this.nativeLutCell = exports;
+        this.nativeLutCellReady = Boolean(
+          this.nativeLutCell?.soemdsp_lut_cell_create &&
+          this.nativeLutCell?.soemdsp_lut_cell_sample &&
+          this.nativeLutCell?.soemdsp_lut_cell_q,
+        );
+        this.port.postMessage({
+          type: "nativeModuleStatus",
+          name: "lut_cell",
+          status: this.nativeLutCellReady ? "ready" : "missing exports",
+        });
+        return;
+      }
       if (name === "shooting_star_explosion" || targetType === "shootingStarExplosion") {
         this.nativeShootingStarExplosion = exports;
         this.nativeShootingStarExplosionReady = Boolean(
@@ -772,6 +790,7 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
     this.turingMachineStates = new Map();
     this.pitchQuantizerStates = new Map();
     this.chordSequencerStates = new Map();
+    this.lutCellStates = new Map();
     this.noiseGeneratorStates = new Map();
     this.oscResetStates = new Map();
     this.graphLfoStates = new Map();
@@ -1018,6 +1037,9 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
       if (node?.type === "chordSequencer" && !this.chordSequencerStates.has(id)) {
         this.chordSequencerStates.set(id, this.createChordSequencerState());
       }
+      if (node?.type === "lutCell" && !this.lutCellStates.has(id)) {
+        this.lutCellStates.set(id, this.createLutCellState());
+      }
       if (node?.type === "passiveFilter" && !this.passiveFilterStates.has(id)) {
         this.passiveFilterStates.set(id, this.createPassiveFilterState());
       }
@@ -1219,6 +1241,12 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
       if (!ids.has(id)) {
         this.destroyChordSequencerNativeState(this.chordSequencerStates.get(id));
         this.chordSequencerStates.delete(id);
+      }
+    }
+    for (const id of [...this.lutCellStates.keys()]) {
+      if (!ids.has(id)) {
+        this.destroyLutCellNativeState(this.lutCellStates.get(id));
+        this.lutCellStates.delete(id);
       }
     }
     for (const id of [...this.passiveFilterStates.keys()]) {
@@ -3680,6 +3708,7 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
     runtime.turingMachineStates = new Map();
     runtime.pitchQuantizerStates = new Map();
     runtime.chordSequencerStates = new Map();
+    runtime.lutCellStates = new Map();
     runtime.stepSequencerStates = new Map();
     runtime.triggerCounterStates = new Map();
     runtime.triggerDividerStates = new Map();
@@ -3729,6 +3758,7 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
       if (node?.type === "turingMachine") this.turingMachineStates.set(id, this.createTuringMachineState());
       if (node?.type === "pitchQuantizer") this.pitchQuantizerStates.set(id, this.createPitchQuantizerState());
       if (node?.type === "chordSequencer") this.chordSequencerStates.set(id, this.createChordSequencerState());
+      if (node?.type === "lutCell") this.lutCellStates.set(id, this.createLutCellState());
       if (node?.type === "passiveFilter") this.passiveFilterStates.set(id, this.createPassiveFilterState());
       if (node?.type === "cookbookFilter") this.cookbookFilterStates.set(id, this.createCookbookFilterState());
       if (node?.type === "ladderFilter") this.ladderFilterStates.set(id, this.createLadderFilterState());
@@ -6311,6 +6341,85 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
     return this.chordSequencerSampleJs(state, options);
   }
 
+  createLutCellState() {
+    return { clockWasHigh: false, registeredOut: 0, nativeHandle: 0 };
+  }
+
+  destroyLutCellNativeState(state) {
+    if (state?.nativeHandle && this.nativeLutCell?.soemdsp_lut_cell_destroy) {
+      this.nativeLutCell.soemdsp_lut_cell_destroy(state.nativeHandle);
+      state.nativeHandle = 0;
+    }
+  }
+
+  lutCellSampleJs(state, options = {}) {
+    const a = Number(options.a) > 0 ? 1 : 0;
+    const b = Number(options.b) > 0 ? 1 : 0;
+    const c = Number(options.c) > 0 ? 1 : 0;
+    const d = Number(options.d) > 0 ? 1 : 0;
+    const clockHigh = Number(options.clock) > 0;
+    const table = Math.max(0, Math.min(0xFFFF, Math.round(Number(options.truthTable) || 0)));
+
+    const index = a | (b << 1) | (c << 2) | (d << 3);
+    const combinational = (table >> index) & 1;
+
+    if (clockHigh && !state.clockWasHigh) {
+      state.registeredOut = combinational;
+    }
+    state.clockWasHigh = clockHigh;
+
+    return {
+      Out: combinational,
+      Q: state.registeredOut,
+    };
+  }
+
+  lutCellSample(state, options = {}) {
+    if (
+      this.nativeLutCellReady &&
+      this.nativeLutCell?.soemdsp_lut_cell_create &&
+      this.nativeLutCell?.soemdsp_lut_cell_sample &&
+      this.nativeLutCell?.soemdsp_lut_cell_q
+    ) {
+      try {
+        if (!state.nativeHandle) {
+          state.nativeHandle = this.nativeLutCell.soemdsp_lut_cell_create();
+        }
+        if (state.nativeHandle) {
+          const a = Number(options.a) || 0;
+          const b = Number(options.b) || 0;
+          const c = Number(options.c) || 0;
+          const d = Number(options.d) || 0;
+          const clock = Number(options.clock) || 0;
+          const table = Math.max(0, Math.min(0xFFFF, Math.round(Number(options.truthTable) || 0)));
+          const combinational = this.nativeLutCell.soemdsp_lut_cell_sample(
+            state.nativeHandle,
+            a,
+            b,
+            c,
+            d,
+            clock,
+            table,
+          );
+          const q = this.nativeLutCell.soemdsp_lut_cell_q(state.nativeHandle);
+          return {
+            Out: combinational,
+            Q: q,
+          };
+        }
+      } catch (error) {
+        this.nativeLutCellReady = false;
+        this.port.postMessage({
+          type: "nativeModuleStatus",
+          name: "lut_cell",
+          status: "disabled",
+          message: String(error?.message || error || "native LUT Cell failed"),
+        });
+      }
+    }
+    return this.lutCellSampleJs(state, options);
+  }
+
   spiralWrap01(value) {
     return value - Math.floor(value);
   }
@@ -7090,6 +7199,18 @@ class NodeLiveAudioProcessor extends AudioWorkletProcessor {
           level: read("level", 1),
           progression: read("progression", 0),
           reset: mixInput(nodeId, "Reset"),
+        });
+      } else if (node?.type === "lutCell") {
+        const state = this.lutCellStates.get(nodeId) || this.createLutCellState();
+        this.lutCellStates.set(nodeId, state);
+        const read = (key, fallback) => this.readEffectiveParameter(node, key, fallback, frame, frames, frameValues);
+        value = this.lutCellSample(state, {
+          a: mixInput(nodeId, "A"),
+          b: mixInput(nodeId, "B"),
+          c: mixInput(nodeId, "C"),
+          d: mixInput(nodeId, "D"),
+          clock: mixInput(nodeId, "Clock"),
+          truthTable: read("truthTable", 27030),
         });
       } else if (node?.type === "midiOut") {
         const hasMidiInput = this.inputConnections.has(this.inputKey(nodeId, "MIDI Number"));

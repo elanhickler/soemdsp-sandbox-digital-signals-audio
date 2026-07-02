@@ -254,6 +254,7 @@ function createNodeGraphLiveRuntime(plan) {
   const turingMachineStates = new Map();
   const pitchQuantizerStates = new Map();
   const chordSequencerStates = new Map();
+  const lutCellStates = new Map();
   const lorenzAttractorStates = new Map();
   const moduleGroupRuntimes = new Map();
   const noiseGeneratorStates = new Map();
@@ -313,6 +314,9 @@ function createNodeGraphLiveRuntime(plan) {
     }
     if (node.type === "chordSequencer") {
       chordSequencerStates.set(node.id, createNodeGraphChordSequencerState());
+    }
+    if (node.type === "lutCell") {
+      lutCellStates.set(node.id, createNodeGraphLutCellState());
     }
     if (node.type === "passiveFilter") {
       passiveFilterStates.set(node.id, createNodeGraphPassiveFilterState());
@@ -440,6 +444,7 @@ function createNodeGraphLiveRuntime(plan) {
     turingMachineStates,
     pitchQuantizerStates,
     chordSequencerStates,
+    lutCellStates,
     lorenzAttractorStates,
     meterCounter: 0,
     meterClipCount: 0,
@@ -587,6 +592,9 @@ function updateNodeGraphLiveRuntimePlan(runtime, plan) {
   if (!runtime.chordSequencerStates) {
     runtime.chordSequencerStates = new Map();
   }
+  if (!runtime.lutCellStates) {
+    runtime.lutCellStates = new Map();
+  }
   if (!runtime.clockStates) {
     runtime.clockStates = new Map();
   }
@@ -705,6 +713,9 @@ function updateNodeGraphLiveRuntimePlan(runtime, plan) {
     }
     if (node.type === "chordSequencer" && !runtime.chordSequencerStates.has(node.id)) {
       runtime.chordSequencerStates.set(node.id, createNodeGraphChordSequencerState());
+    }
+    if (node.type === "lutCell" && !runtime.lutCellStates.has(node.id)) {
+      runtime.lutCellStates.set(node.id, createNodeGraphLutCellState());
     }
     if (node.type === "passiveFilter" && !runtime.passiveFilterStates.has(node.id)) {
       runtime.passiveFilterStates.set(node.id, createNodeGraphPassiveFilterState());
@@ -902,6 +913,11 @@ function updateNodeGraphLiveRuntimePlan(runtime, plan) {
   for (const id of [...runtime.chordSequencerStates.keys()]) {
     if (!nodeIds.has(id)) {
       runtime.chordSequencerStates.delete(id);
+    }
+  }
+  for (const id of [...runtime.lutCellStates.keys()]) {
+    if (!nodeIds.has(id)) {
+      runtime.lutCellStates.delete(id);
     }
   }
   for (const id of [...runtime.passiveFilterStates.keys()]) {

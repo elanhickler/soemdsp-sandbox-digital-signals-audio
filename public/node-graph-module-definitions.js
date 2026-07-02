@@ -39,6 +39,7 @@ const nodeGraphNodeLabels = Object.freeze({
   turingMachine: "Turing Machine",
   pitchQuantizer: "Pitch Quantizer",
   chordSequencer: "Chord Sequencer",
+  lutCell: "LUT Cell",
   noiseGenerator: "Noise Generator",
   randomWalk: "Random Walk",
   fractalBrownianNoise: "Fractal Brownian Noise",
@@ -754,6 +755,13 @@ const nodeGraphModuleDefinitions = Object.freeze({
         step: "1",
       },
       { key: "level", label: "Level", defaultValue: "1", min: "0", mid: "0.5", max: "1", step: "0.01" },
+    ],
+  },
+  lutCell: {
+    inputs: ["A", "B", "C", "D", "Clock"],
+    outputs: ["Out", "Q"],
+    parameters: [
+      { key: "truthTable", label: "Truth Table", defaultValue: "27030", min: "0", mid: "32767.5", max: "65535", step: "1" },
     ],
   },
   noiseGenerator: {
