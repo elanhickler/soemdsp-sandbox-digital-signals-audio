@@ -60,7 +60,7 @@ of on/off truths.
 > what it actually knew.
 
 <div align="center">
-<img src="docs/assets/wire-diagram.svg" alt="Analog wire vs. digital signal wire, both riding a single float" width="85%"/>
+<img src="docs/assets/wire-diagram.svg?v=2" alt="Analog wire vs. digital signal wire, both riding a single float" width="85%"/>
 </div>
 
 ### 🧮 The math behind it
