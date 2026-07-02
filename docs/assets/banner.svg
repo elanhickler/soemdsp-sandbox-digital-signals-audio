@@ -39,5 +39,4 @@
   <!-- port taps -->
   <circle cx="40" cy="210" r="7" fill="#7fc7d9"/>
   <circle cx="1160" cy="210" r="7" fill="#e2a86d"/>
-  <circle cx="600" cy="222" r="7" fill="#ffffff"/>
 </svg>

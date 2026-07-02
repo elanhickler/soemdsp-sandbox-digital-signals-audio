@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/banner.svg?v=2" alt="soemdsp-sandbox — Digital Signals" width="100%"/>
+<img src="docs/assets/banner.svg?v=3" alt="soemdsp-sandbox — Digital Signals" width="100%"/>
 
 # 🔌 soemdsp-sandbox — Digital Signals
 
